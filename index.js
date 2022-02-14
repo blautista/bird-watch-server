@@ -14,37 +14,54 @@ app.get("/", async (req, res) => {
   const regionCode = req.query.regionCode;
   const userLat = req.query?.lat;
   const userLng = req.query?.lng;
-  let url;
+
+  const numberOfBirds = 5;
+  let url = "";
 
   if (userLat && userLng)
-    url = generateBirdWatchesURLByLatAndLng(userLat, userLng, 25);
-  else url = generateBirdWatchesURLByRegionCode(regionCode, 25);
+    url = generateBirdWatchesURLByLatAndLng(
+      userLat,
+      userLng,
+      25,
+      numberOfBirds
+    );
+  else url = generateBirdWatchesURLByRegionCode(regionCode, numberOfBirds);
 
   try {
-    const { comName, locName, sciName, obsDt, lat, lng } =
-      await fetchBirdWatches(url, 1);
+    const birdWatchesArray = await fetchBirdWatches(url);
 
-    const wikiInfo = await getWikipediaInformation(comName);
+    const birdNames = birdWatchesArray.map(({ birdName }) => birdName);
 
-    console.log(wikiInfo);
+    const wikiInfoObject = await getWikipediaInformation(birdNames);
 
-    const resObject = {
-      birdLocation: locName,
-      birdName: comName,
-      birdSciName: sciName,
-      observedAt: obsDt,
-      lat,
-      lng,
-      wikiInfo: wikiInfo,
-    };
+    const response = birdWatchesArray.map((bird) => ({
+      ...bird,
+      wikiInfo: wikiInfoObject[bird.birdName],
+    }));
 
-    res.send(JSON.stringify(resObject));
+    res.send(JSON.stringify(response));
   } catch (error) {
-    res.status(500).send(error);
+    res.status(500).send(error.message);
   }
 });
 
 app.listen(PORT, () => {});
+
+const parseBirdWatchesResponse = ({
+  locName,
+  comName,
+  sciName,
+  obsDt,
+  lat,
+  lng,
+}) => ({
+  birdLocation: locName,
+  birdName: comName,
+  birdSciName: sciName,
+  observedAt: obsDt,
+  lat,
+  lng,
+});
 
 const fetchBirdWatches = async (url, amount = 1) => {
   try {
@@ -54,35 +71,54 @@ const fetchBirdWatches = async (url, amount = 1) => {
     const customHeaders = { [eBirdKeyHeaderName]: eBirdApiKey };
     const res = await axios.get(url, { headers: { ...customHeaders } });
 
-    const watchData = res.data;
+    const watchData = res.data.map((bird) => parseBirdWatchesResponse(bird));
 
-    return watchData[0];
+    return watchData;
   } catch (error) {
     console.log(error.message);
   }
 };
 
-const getWikipediaInformation = async (searchTerm) => {
-  try {
-    const url = generateWikipediaPageInformationUrl(searchTerm);
-    console.log(url);
-    const res = await axios.get(url);
+const convertBirdNameToWikipediaRedirect = (birdName, redirectsArray) => {
+  for (let redirect of redirectsArray) {
+    if (redirect.from === birdName) return redirect.to;
+  }
+  return undefined;
+};
+const convertWikipediaRedirectToBirdName = (title, redirectsArray) => {
+  for (let redirect of redirectsArray) {
+    if (redirect.to === title) return redirect.from;
+  }
+  return undefined;
+};
 
+const getWikipediaInformation = async (birdNames) => {
+  try {
+    const url = generateWikipediaPageInformationUrl(birdNames);
+    const res = await axios.get(url);
     if (res.data) {
       const queryData = res.data.query;
-      const pageId = queryData.pageids[0];
-      const { title, original, extract, pagelanguage, fullurl } =
-        queryData.pages[pageId];
+      let wikiInfoObject = {};
+      for (let i = 0; i < queryData.pages.length; i++) {
+        const { title, original, extract, pagelanguage, fullurl } =
+          queryData.pages[i];
 
-      const wikiInfo = {
-        title,
-        image: original.source,
-        summary: htmlStringToText(extract),
-        pagelanguage,
-        url: fullurl,
-      };
+        const birdWikiInfo = {
+          title,
+          image: original?.source,
+          summary: htmlStringToText(extract),
+          pagelanguage,
+          url: fullurl,
+        };
 
-      return wikiInfo;
+        const originalBirdName = convertWikipediaRedirectToBirdName(
+          title,
+          queryData.redirects
+        );
+        console.log(originalBirdName);
+        wikiInfoObject[originalBirdName] = { ...birdWikiInfo };
+      }
+      return wikiInfoObject;
     }
   } catch (error) {
     console.log(error.message);
