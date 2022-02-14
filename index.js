@@ -6,7 +6,10 @@ const {
   generateBirdWatchesURLByRegionCode,
   generateWikipediaPageInformationUrl,
 } = require("./serviceUrls.js");
-const { htmlStringToText } = require("./utils.js");
+const {
+  htmlStringToText,
+  convertWikipediaRedirectToBirdName,
+} = require("./utils.js");
 require("dotenv").config();
 const PORT = process.env.PORT;
 
@@ -79,19 +82,6 @@ const fetchBirdWatches = async (url, amount = 1) => {
   }
 };
 
-const convertBirdNameToWikipediaRedirect = (birdName, redirectsArray) => {
-  for (let redirect of redirectsArray) {
-    if (redirect.from === birdName) return redirect.to;
-  }
-  return undefined;
-};
-const convertWikipediaRedirectToBirdName = (title, redirectsArray) => {
-  for (let redirect of redirectsArray) {
-    if (redirect.to === title) return redirect.from;
-  }
-  return undefined;
-};
-
 const getWikipediaInformation = async (birdNames) => {
   try {
     const url = generateWikipediaPageInformationUrl(birdNames);
@@ -115,12 +105,12 @@ const getWikipediaInformation = async (birdNames) => {
           title,
           queryData.redirects
         );
-        console.log(originalBirdName);
+
         wikiInfoObject[originalBirdName] = { ...birdWikiInfo };
       }
       return wikiInfoObject;
     }
   } catch (error) {
-    console.log(error.message);
+    console.error(error.message);
   }
 };
