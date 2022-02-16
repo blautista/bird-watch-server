@@ -2,7 +2,7 @@ exports.generateBirdWatchesURLByRegionCode = (regionCode, limit) =>
   `https://api.ebird.org/v2/data/obs/${regionCode}/recent?maxResults=${limit}`;
 exports.generateBirdWatchesURLByLatAndLng = (lat, lng, distance, limit) =>
   `https://api.ebird.org/v2/data/obs/geo/recent?lat=${lat}&lng=${lng}&dist=${distance}&maxResults=${limit}`;
-exports.generateWikipediaPageInformationUrl = (titles) => {
+exports.generateWikipediaPageInformationUrl = (titles, limit = 5) => {
   const params = new URLSearchParams({
     action: "query",
     format: "json",
@@ -13,8 +13,9 @@ exports.generateWikipediaPageInformationUrl = (titles) => {
     converttitles: 1,
     formatversion: "latest",
     piprop: "thumbnail|original|name",
-    pithumbsize: "50",
-    pilimit: "1",
+    pithumbsize: "200",
+    pilimit: limit,
+    pilicense: "any",
     exintro: 1,
     inprop: "url",
   });
