@@ -13,7 +13,7 @@ const {
 require("dotenv").config();
 const PORT = process.env.PORT;
 
-app.get("/", async (req, res) => {
+app.get("/birds", async (req, res) => {
   const regionCode = req.query.regionCode;
   const userLat = req.query?.lat;
   const userLng = req.query?.lng;
@@ -42,7 +42,8 @@ app.get("/", async (req, res) => {
       wikiInfo: wikiInfoObject[bird.birdName],
     }));
 
-    res.send(JSON.stringify(response));
+    res.header("Content-type", "application/json");
+    res.send({ data: response });
   } catch (error) {
     res.status(500).send(error.message);
   }
@@ -90,12 +91,13 @@ const getWikipediaInformation = async (birdNames) => {
       const queryData = res.data.query;
       let wikiInfoObject = {};
       for (let i = 0; i < queryData.pages.length; i++) {
-        const { title, original, extract, pagelanguage, fullurl } =
+        const { title, original, thumbnail, extract, pagelanguage, fullurl } =
           queryData.pages[i];
 
         const birdWikiInfo = {
           title,
           image: original?.source,
+          thumbnail: thumbnail?.source,
           summary: htmlStringToText(extract),
           pagelanguage,
           url: fullurl,
