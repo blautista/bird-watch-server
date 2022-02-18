@@ -6,6 +6,7 @@ const {
   generateBirdWatchesURLByRegionCode,
   generateWikipediaPageInformationUrl,
   generateXenoCantoURLBySearchTerm,
+  generateReverseGeocodingURL,
 } = require("./serviceUrls.js");
 const {
   htmlStringToText,
@@ -19,8 +20,9 @@ app.get("/birds", async (req, res) => {
   const regionCode = req.query.regionCode;
   const userLat = req.query?.lat;
   const userLng = req.query?.lng;
+  const shouldFetchAudio = req.query?.audio;
 
-  const numberOfBirds = 11;
+  const numberOfBirds = 10;
   let url = "";
 
   if (userLat && userLng)
@@ -39,23 +41,29 @@ app.get("/birds", async (req, res) => {
     const birdSciNames = birdWatchesArray.map(({ birdSciName }) => birdSciName);
 
     console.log("finished fetching eBird information." + birdNames.join(","));
-    const wikiInfoPromise = getWikipediaInformation(birdNames);
+    const wikiInfoPromise = getWikipediaInformation(birdSciNames);
     const xenoCantoPromise = getBirdRecordings(birdSciNames, birdNames);
+    const reverseGeocodingPromise = getLocationFromCoordinates(
+      userLat,
+      userLng
+    );
 
-    const [wikiInfoObject, xenoCantoObject] = await Promise.all([
-      wikiInfoPromise,
-      xenoCantoPromise,
-    ]);
+    const [wikiInfoObject, xenoCantoObject, userLocationObject] =
+      await Promise.all([
+        wikiInfoPromise,
+        xenoCantoPromise,
+        reverseGeocodingPromise,
+      ]);
 
     console.log("finished fetching both wikiInfo and birdRecs");
     const response = birdWatchesArray.map((bird) => ({
       ...bird,
-      wikiInfo: wikiInfoObject[bird.birdName],
-      recordings: xenoCantoObject[bird.birdName],
+      wikiInfo: wikiInfoObject[bird.birdSciName],
+      recordings: xenoCantoObject[bird.birdSciName],
     }));
     console.log("response sent");
     res.header("Content-type", "application/json");
-    res.send({ data: response });
+    res.send({ data: response, ...userLocationObject });
   } catch (error) {
     res.status(500).send(error.message);
   }
@@ -85,8 +93,11 @@ const getBirdRecordings = async (birdSciNames, birdNames) => {
   try {
     const dataArray = await Promise.all(promises);
     const birdRecordingsObject = {};
-    for (let i = 0; i < birdNames.length; i++) {
-      birdRecordingsObject[birdNames[i]] = dataArray[i].recordings.slice(0, 3);
+    for (let i = 0; i < birdSciNames.length; i++) {
+      birdRecordingsObject[birdSciNames[i]] = dataArray[i].recordings.slice(
+        0,
+        3
+      );
     }
     return birdRecordingsObject;
   } catch (error) {
@@ -130,6 +141,23 @@ const fetchWikipediaInformation = async (birdNames) => {
 
     return res.data;
   } catch (error) {
+    return { error };
+  }
+};
+
+const getLocationFromCoordinates = async (lat, lng) => {
+  try {
+    console.log(`trying to convert ${lat},${lng} to address`);
+    const url = generateReverseGeocodingURL(
+      lat,
+      lng,
+      process.env.OPENWEATHERMAP_API_KEY
+    );
+    const res = await axios.get(url);
+
+    return { userLocation: res.data[0] };
+  } catch (error) {
+    console.log(error.message);
     return { error };
   }
 };
