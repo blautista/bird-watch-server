@@ -1,3 +1,5 @@
+const iso = require("iso-3166-1");
+
 exports.htmlStringToText = (htmlString) =>
   htmlString.replace(/(<([^>]+)>)/gi, "").replace(/\n/g, "");
 
@@ -13,3 +15,6 @@ exports.convertWikipediaRedirectToBirdName = (title, redirectsArray) => {
   }
   return undefined;
 };
+
+exports.convertCountryCodeToCountryName = (alpha2) =>
+  iso.whereAlpha2(alpha2).country;
