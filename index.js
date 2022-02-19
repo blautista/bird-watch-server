@@ -14,6 +14,7 @@ const {
 } = require("./utils.js");
 require("dotenv").config();
 const PORT = process.env.PORT;
+app.use(express.json());
 
 app.get("/birds", async (req, res) => {
   console.log("Starting request");

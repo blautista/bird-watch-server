@@ -1,8 +1,14 @@
 exports.generateBirdWatchesURLByRegionCode = (regionCode, limit) =>
-  `https://api.ebird.org/v2/data/obs/${regionCode}/recent?maxResults=${limit}`;
+  `https://api.ebird.org/v2/data/obs/${regionCode}/notable?maxResults=${limit}`;
 
-exports.generateBirdWatchesURLByLatAndLng = (lat, lng, distance, limit) =>
-  `https://api.ebird.org/v2/data/obs/geo/recent?lat=${lat}&lng=${lng}&dist=${distance}&maxResults=${limit}`;
+exports.generateBirdWatchesURLByLatAndLng = (
+  lat,
+  lng,
+  distance,
+  limit,
+  type = "notable"
+) =>
+  `https://api.ebird.org/v2/data/obs/geo/${type}?lat=${lat}&lng=${lng}&dist=${distance}&maxResults=${limit}`;
 
 exports.generateXenoCantoURLBySearchTerm = (q) =>
   `https://www.xeno-canto.org/api/2/recordings?query=${q}+len_lt:20`;
