@@ -6,19 +6,36 @@ exports.getBirdRecordings = async (birdSciNames, birdNames) => {
   const promises = birdSciNames.map((n) => fetchBirdRecordings(n));
   try {
     const dataArray = await Promise.all(promises);
-    const birdRecordingsObject = {};
-    for (let i = 0; i < birdSciNames.length; i++) {
-      birdRecordingsObject[birdSciNames[i]] = dataArray[i].recordings.slice(
-        0,
-        3
-      );
-    }
+    const birdRecordingsObject = parseAllBirdRecordings(
+      dataArray,
+      birdSciNames
+    );
+
     return birdRecordingsObject;
   } catch (error) {
     return { error };
   } finally {
     console.log("finished fetching bird recordings");
   }
+};
+
+const parseAllBirdRecordings = (dataArray, birdSciNames) => {
+  let parsedAllBirdRecordings = {};
+  dataArray.map((birdData, index) => {
+    const sciName = birdSciNames[index];
+    const parsedBirdRecordings = birdData.recordings
+      .map(({ loc, rec, file, date }) => ({
+        location: loc,
+        recordedBy: rec,
+        url: file,
+        date,
+      }))
+      .slice(0, 3);
+
+    parsedAllBirdRecordings[sciName] = parsedBirdRecordings;
+  });
+
+  return parsedAllBirdRecordings;
 };
 
 const fetchBirdRecordings = async (searchTerm) => {

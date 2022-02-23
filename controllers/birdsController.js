@@ -22,25 +22,26 @@ const getAllBirdDAta = async (req, res, next) => {
     const birdSciNames = birdWatchesArray.map(({ birdSciName }) => birdSciName);
 
     console.log("finished fetching eBird information." + birdNames.join(","));
+
     const wikiInfoPromise = getWikipediaInformation(birdSciNames);
-    const xenoCantoPromise = getBirdRecordings(birdSciNames, birdNames);
     const reverseGeocodingPromise = getLocationFromCoordinates(
       userLat,
       userLng
     );
 
-    const [wikiInfoObject, xenoCantoObject, userLocationObject] =
-      await Promise.all([
-        wikiInfoPromise,
-        xenoCantoPromise,
-        reverseGeocodingPromise,
-      ]);
+    const promises = [wikiInfoPromise, reverseGeocodingPromise];
 
-    console.log("finished fetching both wikiInfo and birdRecs");
+    if (shouldFetchAudio)
+      promises.push(getBirdRecordings(birdSciNames, birdNames));
+
+    const [wikiInfoObject, userLocationObject, xenoCantoObject] =
+      await Promise.all(promises);
+
+    console.log("finished fetching all");
     const response = birdWatchesArray.map((bird) => ({
       ...bird,
       wikiInfo: wikiInfoObject[bird.birdSciName],
-      recordings: xenoCantoObject[bird.birdSciName],
+      recordings: xenoCantoObject?.[bird.birdSciName],
     }));
     console.log("response sent");
     res.json({ data: response, ...userLocationObject });
